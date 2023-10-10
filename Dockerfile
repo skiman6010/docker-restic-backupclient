@@ -1,6 +1,6 @@
 FROM mongo:4.4.15 AS mongo
 
-FROM alpine:3.14
+FROM alpine:3.18
 
 RUN \
     # install restic \
