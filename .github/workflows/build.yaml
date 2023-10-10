@@ -1,36 +1,51 @@
-name: Build
-on: 
-  workflow_dispatch:
+name: Create and publish a Docker image
+
+on:
   push:
-    tags:
-      - '**'
-    branches:
-      - master
+    branches: ['main']
+    tags: [v*]
+  release:
+    types: [published]
+
+env:
+  REGISTRY: ghcr.io
+
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build:
-    name: build and push
+  build-and-push-image:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
     steps:
-      - name: Check out the repo
-        uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v1
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2.1.0
         with:
-          username: ${{ secrets.DOCKERHUB_USER_NAME }}
-          password: ${{ secrets.DOCKERHUB_USER_PASSWORD }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Docker meta
+      - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v3
+        uses: docker/metadata-action@v4.3.0
         with:
-          images: evermind/restic-backupclient
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+                # tag event
+                type=ref,event=tag
+                # define default branch
+                type=edge,branch=main
 
-      - name: Push to Docker Hub
-        uses: docker/build-push-action@v2
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4.0.0
         with:
           context: .
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          push: true
